@@ -21,3 +21,14 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code
+.claude/
+CLAUDE.md
+.claude_history
+.cursor/
+
+# Local tools / env
+.llm_integration_env/
+llm_integration_env/
+.claude/
