@@ -9,30 +9,41 @@ type Props = {
 
 export default function HomeHeader({ greeting, title, onPressProfile }: Props) {
   return (
-    <View style={styles.header}>
+    <View style={styles.headerRow}>
       <Text style={styles.greeting}>{greeting}</Text>
 
       <Text style={styles.title}>{title}</Text>
 
-      <Pressable onPress={onPressProfile} accessibilityLabel="Profile">
-        <Icon name="user-circle" size={26} />
+      <Pressable onPress={onPressProfile} accessibilityLabel="Account">
+        <Icon name="user-circle" size={26} color={tokens.gold} />
       </Pressable>
     </View>
   );
 }
 
+const tokens = {
+  text: "#e8eef6",
+  gold: "#f2a900",
+};
+
 const styles = StyleSheet.create({
-  header: {
+  headerRow: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 12,
   },
+
   greeting: {
+    color: tokens.text,
     fontSize: 14,
-  },
-  title: {
-    fontSize: 18,
     fontWeight: "600",
+  },
+
+  title: {
+    color: tokens.text,
+    fontSize: 22,
+    fontWeight: "800",
   },
 });
