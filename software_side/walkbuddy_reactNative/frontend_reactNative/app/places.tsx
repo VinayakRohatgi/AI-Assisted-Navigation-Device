@@ -1,12 +1,96 @@
-import React, { useCallback, useState } from "react";
-import {SafeAreaView,StyleSheet,Text,View,Pressable,FlatList,} from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  Pressable,
+  FlatList,
+  useWindowDimensions,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/FontAwesome";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
-import {getPlacesSorted,toggleFavourite,markUsed,PlaceItem,} from "./lib/placesStore";
+import HomeHeader from "./HomeHeader";
+import Footer from "./Footer";
+
+import {
+  getPlacesSorted,
+  toggleFavourite,
+  markUsed,
+  PlaceItem,
+} from "./lib/placesStore";
+
+/*
+  TEMPORARY TESTING ONLY
+  This seeds AsyncStorage with 5 dummy places if none exist.
+  This must be REMOVED once real location data is wired in.
+*/
+async function seedPlacesOnce() {
+  const list = await getPlacesSorted();
+  if (list.length > 0) return;
+
+  const now = Date.now();
+  const dummy: PlaceItem[] = [
+  {
+    id: `${now}-home`,
+    kind: "I",
+    title: "My Apartment",
+    isFav: true,
+    createdAt: now,
+    lastUsed: 0,
+  },
+  {
+    id: `${now}-office`,
+    kind: "I",
+    title: "Office Reception",
+    isFav: false,
+    createdAt: now - 1,
+    lastUsed: 0,
+  },
+  {
+    id: `${now}-shops`,
+    kind: "E",
+    title: "Westfield Geelong",
+    isFav: false,
+    createdAt: now - 2,
+    lastUsed: 0,
+  },
+  {
+    id: `${now}-station`,
+    kind: "E",
+    title: "Geelong Railway Station",
+    isFav: false,
+    createdAt: now - 3,
+    lastUsed: 0,
+  },
+  {
+    id: `${now}-library`,
+    kind: "E",
+    title: "Geelong Library & Heritage Centre",
+    isFav: false,
+    createdAt: now - 4,
+    lastUsed: 0,
+  },
+];
+
+
+  const AsyncStorage =
+    (await import("@react-native-async-storage/async-storage")).default;
+  await AsyncStorage.setItem("wb:places_v2", JSON.stringify(dummy));
+}
 
 export default function PlacesPage() {
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+
   const [savedPlacesList, setSavedPlacesList] = useState<PlaceItem[]>([]);
+
+  const contentWidth = useMemo(() => {
+    const padding = 24;
+    const max = 720;
+    return Math.min(max, Math.max(320, width - padding * 2));
+  }, [width]);
 
   const refresh = useCallback(async () => {
     const list = await getPlacesSorted();
@@ -15,7 +99,7 @@ export default function PlacesPage() {
 
   useFocusEffect(
     useCallback(() => {
-      refresh();
+      seedPlacesOnce().then(refresh);
     }, [refresh])
   );
 
@@ -57,35 +141,58 @@ export default function PlacesPage() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <FlatList
-        data={savedPlacesList}
-        keyExtractor={(placeItem) => placeItem.id}
-        renderItem={renderPlaceItem}
-        contentContainerStyle={[
-          styles.listContent,
-          savedPlacesList.length === 0 && styles.listContentEmpty,
-        ]}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No places stored</Text>
-          </View>
-        }
-      />
+    <SafeAreaView style={styles.screen} edges={["top"]}>
+      <View style={[styles.content, { width: contentWidth }]}>
+        <HomeHeader
+          greeting="Hi!"
+          title="Places"
+          onPressProfile={() => router.push("/account")}
+          showDivider={true}
+          showLocation={true}
+          locationLabel="LOCATION"
+          locationValue=""
+          locationEnabled={false}
+          onToggleLocation={() => {}}
+        />
+
+        <FlatList
+          data={savedPlacesList}
+          keyExtractor={(placeItem) => placeItem.id}
+          renderItem={renderPlaceItem}
+          contentContainerStyle={[
+            styles.listContent,
+            savedPlacesList.length === 0 && styles.listContentEmpty,
+          ]}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No places stored</Text>
+            </View>
+          }
+        />
+
+        <Footer />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: "#0D1B2A",
+    alignItems: "center",
+  },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 8,
   },
 
   listContent: {
     paddingTop: 14,
     paddingHorizontal: 14,
-    paddingBottom: 8,
+    paddingBottom: 120,
     gap: 12,
   },
 
