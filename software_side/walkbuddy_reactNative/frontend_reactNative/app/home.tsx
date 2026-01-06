@@ -1,7 +1,7 @@
+// home.tsx (HomePage)
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import {
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -9,9 +9,10 @@ import {
   Switch,
   useWindowDimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/FontAwesome";
 import HomeHeader from "./HomeHeader";
-
+import Footer from "./Footer";
 import ModelWebView from "../src/components/ModelWebView";
 import { API_BASE } from "../src/config";
 
@@ -36,7 +37,7 @@ export default function HomePage() {
 
   const goToAccount = () => router.push("/account");
   const goToNavigate = () => router.push("/navigate");
-  const goToSavedPlaces = () => router.push("/savedplaces");
+  const goToSavedPlaces = () => router.push("/places");
   const goToCameraScreen = () => router.push("/camera");
 
   // If Vision Assist is turned off, force preview off.
@@ -82,27 +83,13 @@ export default function HomePage() {
           greeting="Hi George!"
           title="WalkBuddy"
           onPressProfile={goToAccount}
+          showDivider={true}
+          showLocation={true}
+          locationLabel="LOCATION"
+          locationValue="1 HERE ST THERE"
+          locationEnabled={visionEnabled}
+          onToggleLocation={setVisionEnabled}
         />
-
-        <View style={styles.topDivider} />
-
-        {/* LOCATION block */}
-        <View style={styles.locationWrap}>
-          <Text style={styles.locationLabel}>LOCATION</Text>
-
-          <View style={styles.locationOuterCard}>
-            <View style={styles.locationInnerRow}>
-              <Text style={styles.locationValue}>1 HERE ST THERE</Text>
-
-              <Switch
-                value={visionEnabled}
-                onValueChange={setVisionEnabled}
-                trackColor={{ false: "#23384d", true: "#2d4b66" }}
-                thumbColor={visionEnabled ? tokens.gold : "#9aa8b6"}
-              />
-            </View>
-          </View>
-        </View>
 
         <View style={styles.mainArea}>
           <Pressable style={styles.searchButton} onPress={goToNavigate}>
@@ -158,25 +145,7 @@ export default function HomePage() {
           </Pressable>
         </View>
 
-        <View style={styles.bottomDivider} />
-
-        <View style={styles.bottomNav}>
-          <Pressable accessibilityLabel="Home" onPress={() => router.push("/home")}>
-            <Icon name="home" size={22} color={tokens.gold} />
-          </Pressable>
-
-          <Pressable accessibilityLabel="Camera" onPress={goToCameraScreen}>
-            <Icon name="camera" size={22} color={tokens.gold} />
-          </Pressable>
-
-          <Pressable accessibilityLabel="Navigate" onPress={goToNavigate}>
-            <Icon name="location-arrow" size={22} color={tokens.gold} />
-          </Pressable>
-
-          <Pressable accessibilityLabel="Account" onPress={goToAccount}>
-            <Icon name="user" size={22} color={tokens.gold} />
-          </Pressable>
-        </View>
+        <Footer />
       </View>
     </SafeAreaView>
   );
@@ -219,54 +188,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingTop: 8,
-  },
-
-  topDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.divider,
-    marginBottom: 12,
-  },
-
-  locationWrap: {
-    width: "100%",
-    marginBottom: 16,
-  },
-
-  locationLabel: {
-    color: tokens.muted,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.6,
-    marginBottom: 8,
-  },
-
-  locationOuterCard: {
-    width: "100%",
-    backgroundColor: tokens.tile,
-    borderWidth: 2,
-    borderColor: tokens.gold,
-    borderRadius: 16,
-    padding: 12,
-  },
-
-  locationInnerRow: {
-    width: "100%",
-    backgroundColor: "#0a121a",
-    borderWidth: 2,
-    borderColor: tokens.gold,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  locationValue: {
-    color: tokens.text,
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 0.4,
   },
 
   mainArea: {
