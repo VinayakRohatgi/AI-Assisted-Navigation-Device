@@ -1,45 +1,96 @@
 // HomeHeader.tsx
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, Pressable, StyleSheet, Switch } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
+import { useSegments } from "expo-router";
+import { useCurrentLocation } from "./lib/locationSaver";
 
 type Props = {
-  greeting?: string;
-  title?: string;
+  greeting?: string;        // Home only (future profile will supply this)
+  appTitle?: string;        // Branding in the centre
   onPressProfile?: () => void;
 
   showDivider?: boolean;
-
   showLocation?: boolean;
-  locationLabel?: string;
-  locationValue?: string;
 
-  locationEnabled?: boolean;
-  onToggleLocation?: (value: boolean) => void;
+  // Fallback only (if provider empty)
+  locationValue?: string;
 };
+
+function titleCaseFromSegment(seg: string) {
+  const cleaned = (seg ?? "").replace(/[-_]/g, " ").trim();
+  if (!cleaned) return "";
+  return cleaned
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function getRouteNameFromSegments(segments: string[]) {
+  const usable = segments.filter((s) => !s.startsWith("(") && s.length > 0);
+  if (usable.length === 0) return "";
+  const last = usable[usable.length - 1];
+  if (last.toLowerCase() === "index") return "Home";
+  return titleCaseFromSegment(last);
+}
+
+function isHomeBySegments(segments: string[]) {
+  const usable = segments.filter((s) => !s.startsWith("(") && s.length > 0);
+  if (usable.length === 0) return true;
+  const last = (usable[usable.length - 1] ?? "").toLowerCase();
+  return last === "home" || last === "index";
+}
 
 export default function HomeHeader({
   greeting = "Hi!",
-  title = "WalkBuddy",
+  appTitle = "WalkBuddy",
   onPressProfile,
 
   showDivider = true,
-
   showLocation = true,
-  locationLabel = "LOCATION",
+
   locationValue = "",
-  locationEnabled = false,
-  onToggleLocation,
 }: Props) {
+  const segments = useSegments();
+  const {
+    currentLocation,
+    destination,
+    preferDestinationView,
+    setPreferDestinationView,
+  } = useCurrentLocation();
+
+  const derived = useMemo(() => {
+    const onHome = isHomeBySegments(segments);
+
+    const routeName = getRouteNameFromSegments(segments);
+    const leftText = onHome ? greeting : `${routeName || "Page"} Page`;
+
+    const hasDestination = !!destination && destination.trim().length > 0;
+    const showingDestination = hasDestination && preferDestinationView;
+
+    const label = showingDestination ? "DESTINATION" : "LOCATION";
+    const value =
+      (showingDestination ? destination : currentLocation) || locationValue;
+
+    return {
+      leftText,
+      hasDestination,
+      label,
+      value,
+      switchValue: hasDestination ? preferDestinationView : false,
+    };
+  }, [segments, greeting, currentLocation, destination, preferDestinationView, locationValue]);
+
   return (
     <View style={styles.wrap}>
       <View style={styles.headerRow}>
         <Text style={styles.greeting} numberOfLines={1}>
-          {greeting}
+          {derived.leftText}
         </Text>
 
         <Text style={styles.title} numberOfLines={1}>
-          {title}
+          {appTitle}
         </Text>
 
         <Pressable
@@ -57,19 +108,23 @@ export default function HomeHeader({
 
       {showLocation && (
         <View style={styles.locationWrap}>
-          <Text style={styles.locationLabel}>{locationLabel}</Text>
+          <Text style={styles.locationLabel}>{derived.label}</Text>
 
           <View style={styles.locationOuterCard}>
             <View style={styles.locationInnerRow}>
               <Text style={styles.locationValue} numberOfLines={1}>
-                {locationValue}
+                {derived.value}
               </Text>
 
               <Switch
-                value={!!locationEnabled}
-                onValueChange={(v) => onToggleLocation?.(v)}
+                disabled={!derived.hasDestination}
+                value={derived.switchValue}
+                onValueChange={(v) => {
+                  if (!derived.hasDestination) return;
+                  setPreferDestinationView(v);
+                }}
                 trackColor={{ false: "#23384d", true: "#2d4b66" }}
-                thumbColor={locationEnabled ? tokens.gold : "#9aa8b6"}
+                thumbColor={derived.switchValue ? tokens.gold : "#9aa8b6"}
               />
             </View>
           </View>
@@ -170,3 +225,4 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 });
+  

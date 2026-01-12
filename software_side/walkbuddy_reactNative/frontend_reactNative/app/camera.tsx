@@ -12,25 +12,52 @@ import React, {
 } from "react";
 import {
   Alert,
-  Dimensions,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 
 import ModelWebView from "../src/components/ModelWebView";
 import { API_BASE } from "../src/config";
+import HomeHeader from "./HomeHeader";
+import Footer from "./Footer";
 
-const GOLD = "#f9b233";
-const { height: SCREEN_H } = Dimensions.get("window");
+const tokens = {
+  bg: "#0D1B2A",
+  card: "#111",
+  gold: "#FCA311",
+  text: "#E0E1DD",
+};
 
 type Mode = "idle" | "vision" | "voice" | "ocr";
 
 export default function CameraAssistScreen() {
+  const router = useRouter();
+  const { width, height } = useWindowDimensions();
+
+  const contentWidth = useMemo(() => {
+    const padding = 24;
+    const max = 720;
+    return Math.min(max, Math.max(320, width - padding * 2));
+  }, [width]);
+
   // default mode = voice (camera only, no Gradio)
   const [mode, setMode] = useState<Mode>("voice");
+
+  // set mode 
+  const { mode: modeParam } = useLocalSearchParams<{ mode?: "vision" | "voice" | "ocr" }>();
+
+  useEffect(() => {
+    if (modeParam === "vision" || modeParam === "voice" || modeParam === "ocr") {
+      setMode(modeParam);
+    }
+  }, [modeParam]);
 
   // camera for voice assist
   const [perm, requestPermission] = useCameraPermissions();
@@ -42,12 +69,8 @@ export default function CameraAssistScreen() {
 
   // Pick the correct mounted Gradio app
   const url = useMemo(() => {
-    if (mode === "vision") {
-      return `${API_BASE}/vision/?v=${rev}`;
-    }
-    if (mode === "ocr") {
-      return `${API_BASE}/ocr/?v=${rev}`;
-    }
+    if (mode === "vision") return `${API_BASE}/vision/?v=${rev}`;
+    if (mode === "ocr") return `${API_BASE}/ocr/?v=${rev}`;
     return "";
   }, [mode, rev]);
 
@@ -55,12 +78,11 @@ export default function CameraAssistScreen() {
   useEffect(() => {
     if (mode === "vision" || mode === "ocr") {
       setLoading(true);
-      setRev((x) => x + 1); // force WebView reload
+      setRev((x) => x + 1);
       const t = setTimeout(() => setLoading(false), 800);
       return () => clearTimeout(t);
-    } else {
-      setLoading(false);
     }
+    setLoading(false);
   }, [mode]);
 
   // voice assist
@@ -108,8 +130,6 @@ export default function CameraAssistScreen() {
     };
   }, []);
 
-  // --------- voice assist ----------
-
   const startListening = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -120,11 +140,14 @@ export default function CameraAssistScreen() {
         Alert.alert("Speech recognition not available in this browser.");
         return;
       }
+
       const rec = new SR();
       recognitionRef.current = rec;
+
       rec.lang = "en-US";
       rec.continuous = false;
       rec.interimResults = true;
+
       rec.onresult = (e: any) => {
         let text = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -132,8 +155,10 @@ export default function CameraAssistScreen() {
         }
         setTranscript(text.trim());
       };
+
       rec.onend = () => setIsListening(false);
       rec.onerror = () => setIsListening(false);
+
       setTranscript("");
       setIsListening(true);
       rec.start();
@@ -162,114 +187,143 @@ export default function CameraAssistScreen() {
     if (t.includes("scan text")) setMode("ocr");
   }, [transcript, speak]);
 
-  // --------- permission gate for voice camera ----------
+  const previewHeight = useMemo(() => {
+    // Keep a consistent feel across devices (similar footprint to your old screen)
+    const h = Math.round(height * 0.52);
+    return Math.max(260, Math.min(520, h));
+  }, [height]);
 
   if (!perm) {
-    return <View style={{ flex: 1, backgroundColor: "#1B263B" }} />;
+    return <View style={{ flex: 1, backgroundColor: tokens.bg }} />;
   }
 
   if (!perm.granted) {
     return (
-      <View style={styles.centerDark}>
-        <Text style={{ color: "#fff", marginBottom: 12 }}>
-          Camera access is required for Voice Assist.
-        </Text>
-        <Pressable style={styles.primaryBtn} onPress={requestPermission}>
-          <Text style={styles.primaryBtnText}>Grant Permission</Text>
-        </Pressable>
-      </View>
+      <SafeAreaView style={styles.screen} edges={["top"]}>
+        <View style={[styles.content, { width: contentWidth }]}>
+          <HomeHeader
+            greeting="Hi!"
+            appTitle="WalkBuddy"
+            onPressProfile={() => router.push("/account")}
+            showDivider
+            showLocation
+          />
+
+          <View style={styles.centerCard}>
+            <Text style={styles.centerText}>
+              Camera access is required for Voice Assist.
+            </Text>
+
+            <Pressable style={styles.primaryBtn} onPress={requestPermission}>
+              <Text style={styles.primaryBtnText}>Grant Permission</Text>
+            </Pressable>
+          </View>
+
+          <Footer />
+        </View>
+      </SafeAreaView>
     );
   }
 
-  // --------- UI ----------
-
   return (
-    <View style={styles.wrap}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {mode === "ocr"
-            ? "SCAN TEXT"
-            : mode === "voice"
-            ? "VOICE ASSIST"
-            : mode === "vision"
-            ? "VISION ASSIST"
-            : "ASSISTANT"}
-        </Text>
-      </View>
-
-      <View style={styles.previewBox}>
-        {mode === "voice" ? (
-          <CameraView
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            facing="back"
-          />
-        ) : mode === "vision" || mode === "ocr" ? (
-          <ModelWebView url={url} loading={loading} />
-        ) : (
-          <View style={{ flex: 1, backgroundColor: "#1B263B" }} />
-        )}
-      </View>
-
-      <View style={styles.modeBar}>
-        <ModeBtn
-          label="Vision"
-          active={mode === "vision"}
-          onPress={() => {
-            Haptics.selectionAsync();
-            setMode("vision");
-          }}
+    <SafeAreaView style={styles.screen} edges={["top"]}>
+      <View style={[styles.content, { width: contentWidth }]}>
+        <HomeHeader
+          greeting="Hi!"
+          appTitle="WalkBuddy"
+          onPressProfile={() => router.push("/account")}
+          showDivider
+          showLocation
         />
 
-        <ModeBtn
-          label="Voice Assist"
-          active={mode === "voice"}
-          onPress={() => {
-            Haptics.selectionAsync();
-            if (isListening) stopListening();
-            setMode("voice");
-          }}
-        />
-
-        <ModeBtn
-          label="Scan Text"
-          active={mode === "ocr"}
-          onPress={() => {
-            Haptics.selectionAsync();
-            setMode("ocr");
-          }}
-        />
-      </View>
-
-      {mode === "voice" && (
-        <View style={styles.voiceRow}>
-          <Pressable
-            onPress={isListening ? stopListening : startListening}
-            style={[styles.micBtn, isListening && styles.micBtnActive]}
-            disabled={!sttAvailable && Platform.OS !== "web"}
-          >
-            <MaterialIcons
-              name={isListening ? "mic" : "mic-none"}
-              size={28}
-              color={isListening ? "#1B263B" : GOLD}
-            />
-          </Pressable>
-
-          <View style={styles.voiceTextWrap}>
-            <Text style={styles.voiceHint}>
-              {sttAvailable || Platform.OS === "web"
-                ? isListening
-                  ? "Listening… speak now"
-                  : "Tap the mic and speak"
-                : "Mic requires native STT (Dev Client)"}
-            </Text>
-            {!!transcript && (
-              <Text style={styles.voiceTranscript}>{transcript}</Text>
-            )}
-          </View>
+        <View style={styles.modeTitleRow}>
+          <Text style={styles.modeTitle}>
+            {mode === "ocr"
+              ? "SCAN TEXT"
+              : mode === "voice"
+              ? "VOICE ASSIST"
+              : mode === "vision"
+              ? "VISION ASSIST"
+              : "ASSISTANT"}
+          </Text>
         </View>
-      )}
-    </View>
+
+        <View style={[styles.previewBox, { height: previewHeight }]}>
+          {mode === "voice" ? (
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing="back"
+            />
+          ) : mode === "vision" || mode === "ocr" ? (
+            <ModelWebView url={url} loading={loading} />
+          ) : (
+            <View style={{ flex: 1, backgroundColor: tokens.bg }} />
+          )}
+        </View>
+
+        <View style={styles.modeBar}>
+          <ModeBtn
+            label="Vision"
+            active={mode === "vision"}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setMode("vision");
+            }}
+          />
+
+          <ModeBtn
+            label="Voice Assist"
+            active={mode === "voice"}
+            onPress={() => {
+              Haptics.selectionAsync();
+              if (isListening) stopListening();
+              setMode("voice");
+            }}
+          />
+
+          <ModeBtn
+            label="Scan Text"
+            active={mode === "ocr"}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setMode("ocr");
+            }}
+          />
+        </View>
+
+        {mode === "voice" && (
+          <View style={styles.voiceRow}>
+            <Pressable
+              onPress={isListening ? stopListening : startListening}
+              style={[styles.micBtn, isListening && styles.micBtnActive]}
+              disabled={!sttAvailable && Platform.OS !== "web"}
+            >
+              <MaterialIcons
+                name={isListening ? "mic" : "mic-none"}
+                size={28}
+                color={isListening ? tokens.bg : tokens.gold}
+              />
+            </Pressable>
+
+            <View style={styles.voiceTextWrap}>
+              <Text style={styles.voiceHint}>
+                {sttAvailable || Platform.OS === "web"
+                  ? isListening
+                    ? "Listening… speak now"
+                    : "Tap the mic and speak"
+                  : "Mic requires native STT (Dev Client)"}
+              </Text>
+              {!!transcript && (
+                <Text style={styles.voiceTranscript}>{transcript}</Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        <Footer />
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -295,74 +349,105 @@ function ModeBtn({
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: "#1B263B" },
-  header: {
-    flexDirection: "row",
+  screen: {
+    flex: 1,
+    backgroundColor: tokens.bg,
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: GOLD,
   },
-  headerTitle: { color: GOLD, fontSize: 20, fontWeight: "800" },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 0,
+  },
+
+  modeTitleRow: {
+    paddingHorizontal: 14,
+    paddingTop: 2,
+    paddingBottom: 10,
+  },
+  modeTitle: {
+    color: tokens.gold,
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+  },
+
   previewBox: {
-    height: SCREEN_H * 0.55,
-    margin: 12,
-    borderRadius: 10,
+    width: "100%",
+    borderRadius: 14,
     overflow: "hidden",
-    backgroundColor: "#1B263B",
+    backgroundColor: tokens.card,
+    borderWidth: 2,
+    borderColor: tokens.gold,
   },
+
   modeBar: {
     flexDirection: "row",
     gap: 10,
     justifyContent: "space-around",
     paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
+
   modeBtn: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: GOLD,
-    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: tokens.gold,
+    borderRadius: 12,
     paddingVertical: 10,
     alignItems: "center",
+    backgroundColor: tokens.card,
   },
-  modeBtnActive: { backgroundColor: GOLD },
-  modeBtnText: { color: GOLD, fontWeight: "700" },
-  modeBtnTextActive: { color: "#1B263B" },
+  modeBtnActive: { backgroundColor: tokens.gold },
+  modeBtnText: { color: tokens.gold, fontWeight: "800" },
+  modeBtnTextActive: { color: tokens.bg },
+
   voiceRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 12,
   },
+
   micBtn: {
     width: 56,
     height: 56,
     borderRadius: 28,
     borderWidth: 2,
-    borderColor: GOLD,
+    borderColor: tokens.gold,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: tokens.card,
   },
-  micBtnActive: { backgroundColor: GOLD },
+  micBtnActive: { backgroundColor: tokens.gold },
+
   voiceTextWrap: { flex: 1 },
-  voiceHint: { color: GOLD, fontWeight: "700" },
-  voiceTranscript: { color: "#fff", marginTop: 6 },
-  centerDark: {
+  voiceHint: { color: tokens.gold, fontWeight: "800" },
+  voiceTranscript: { color: tokens.text, marginTop: 6 },
+
+  centerCard: {
     flex: 1,
-    alignItems: "center",
+    borderWidth: 2,
+    borderColor: tokens.gold,
+    borderRadius: 14,
+    backgroundColor: tokens.card,
+    padding: 16,
+    marginTop: 14,
     justifyContent: "center",
-    backgroundColor: "#1B263B",
+    alignItems: "center",
+    gap: 12,
   },
+  centerText: { color: tokens.text, fontWeight: "700", textAlign: "center" },
+
   primaryBtn: {
-    backgroundColor: GOLD,
+    backgroundColor: tokens.gold,
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 12,
   },
-  primaryBtnText: { color: "#1B263B", fontWeight: "800" },
+  primaryBtnText: { color: tokens.bg, fontWeight: "900" },
 });
