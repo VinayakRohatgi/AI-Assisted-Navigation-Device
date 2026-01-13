@@ -32,48 +32,47 @@ async function seedPlacesOnce() {
 
   const now = Date.now();
   const dummy: PlaceItem[] = [
-  {
-    id: `${now}-home`,
-    kind: "I",
-    title: "My Apartment",
-    isFav: true,
-    createdAt: now,
-    lastUsed: 0,
-  },
-  {
-    id: `${now}-office`,
-    kind: "I",
-    title: "Office Reception",
-    isFav: false,
-    createdAt: now - 1,
-    lastUsed: 0,
-  },
-  {
-    id: `${now}-shops`,
-    kind: "E",
-    title: "Westfield Geelong",
-    isFav: false,
-    createdAt: now - 2,
-    lastUsed: 0,
-  },
-  {
-    id: `${now}-station`,
-    kind: "E",
-    title: "Geelong Railway Station",
-    isFav: false,
-    createdAt: now - 3,
-    lastUsed: 0,
-  },
-  {
-    id: `${now}-library`,
-    kind: "E",
-    title: "Geelong Library & Heritage Centre",
-    isFav: false,
-    createdAt: now - 4,
-    lastUsed: 0,
-  },
-];
-
+    {
+      id: `${now}-home`,
+      kind: "I",
+      title: "My Apartment",
+      isFav: true,
+      createdAt: now,
+      lastUsed: 0,
+    },
+    {
+      id: `${now}-office`,
+      kind: "I",
+      title: "Office Reception",
+      isFav: false,
+      createdAt: now - 1,
+      lastUsed: 0,
+    },
+    {
+      id: `${now}-shops`,
+      kind: "E",
+      title: "Westfield Geelong",
+      isFav: false,
+      createdAt: now - 2,
+      lastUsed: 0,
+    },
+    {
+      id: `${now}-station`,
+      kind: "E",
+      title: "Geelong Railway Station",
+      isFav: false,
+      createdAt: now - 3,
+      lastUsed: 0,
+    },
+    {
+      id: `${now}-library`,
+      kind: "E",
+      title: "Geelong Library & Heritage Centre",
+      isFav: false,
+      createdAt: now - 4,
+      lastUsed: 0,
+    },
+  ];
 
   const AsyncStorage =
     (await import("@react-native-async-storage/async-storage")).default;
@@ -111,6 +110,11 @@ export default function PlacesPage() {
   const selectPlace = async (placeItem: PlaceItem) => {
     const next = await markUsed(placeItem.id);
     setSavedPlacesList(next);
+
+    router.push({
+      pathname: "/search",
+      params: { presetDestination: placeItem.title },
+    } as any);
   };
 
   const renderPlaceItem = ({ item: placeItem }: { item: PlaceItem }) => (
@@ -124,7 +128,10 @@ export default function PlacesPage() {
       </Text>
 
       <Pressable
-        onPress={() => selectFavPlace(placeItem.id)}
+        onPress={(e) => {
+          e.stopPropagation();
+          selectFavPlace(placeItem.id);
+        }}
         hitSlop={12}
         style={styles.favPlaceButton}
         accessibilityLabel={
@@ -144,15 +151,10 @@ export default function PlacesPage() {
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={[styles.content, { width: contentWidth }]}>
         <HomeHeader
-          greeting="Hi!"
-          title="Places"
-          onPressProfile={() => router.push("/account")}
-          showDivider={true}
-          showLocation={true}
-          locationLabel="LOCATION"
-          locationValue=""
-          locationEnabled={false}
-          onToggleLocation={() => {}}
+          appTitle="WalkBuddy"
+          onPressProfile={() => router.push("/account" as any)}
+          showDivider
+          showLocation
         />
 
         <FlatList
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-
+  
   placeType: {
     width: 26,
     height: 26,

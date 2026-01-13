@@ -39,7 +39,9 @@ export default function HomePage() {
   }, [width]);
 
   const goToAccount = () => router.push("/account");
-  const goToNavigate = () => router.push("/navigate");
+  const goToNavigate = () =>
+  router.push({ pathname: "/search" } as any);
+
   const goToSavedPlaces = () => router.push("/places");
 
   const goToCameraVoice = () =>
@@ -106,7 +108,7 @@ export default function HomePage() {
           showDivider
           showLocation
         />
-
+        
         <View style={styles.mainArea}>
           <Pressable style={styles.searchButton} onPress={goToNavigate}>
             <Text style={styles.searchText}>SEARCH</Text>
