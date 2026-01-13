@@ -17,6 +17,16 @@ export default function Footer() {
     }
   };
 
+  const navCameraMode = (mode: "vision" | "voice" | "ocr") => {
+    // pathname ignores query params, so this prevents pointless pushes
+    if (pathname !== "/camera") {
+      router.push({ pathname: "/camera", params: { mode } } as any);
+      return;
+    }
+    // already on /camera, still push so mode changes
+    router.push({ pathname: "/camera", params: { mode } } as any);
+  };
+
   const showAlertMessage = (alertTitle: string, alertMessage: string) => {
     if (Platform.OS === "web") {
       (globalThis as any).alert?.(`${alertTitle}\n\n${alertMessage}`);
@@ -27,25 +37,16 @@ export default function Footer() {
 
   const saveCurrentTapLocation = async () => {
     if (!currentLocation || !currentLocation.trim()) {
-      showAlertMessage(
-        "Can't save location",
-        "Location is not available yet."
-      );
+      showAlertMessage("Can't save location", "Location is not available yet.");
       return;
     }
 
     const result = await saveCurrentLocation(currentLocation, "E");
 
     if (result.status === "exists") {
-      showAlertMessage(
-        "Already saved",
-        "This location is already saved."
-      );
+      showAlertMessage("Already saved", "This location is already saved.");
     } else {
-      showAlertMessage(
-        "Saved successfully",
-        "Location saved successfully."
-      );
+      showAlertMessage("Saved successfully", "Location saved successfully.");
     }
   };
 
@@ -58,13 +59,21 @@ export default function Footer() {
 
         <View style={styles.divider} />
 
-        <Pressable style={styles.bottomItem} onPress={() => navPage("/camera")}>
+        {/* Camera icon should open camera with VISION active */}
+        <Pressable
+          style={styles.bottomItem}
+          onPress={() => navCameraMode("vision")}
+        >
           <Icon name="camera" size={30} color="#FCA311" />
         </Pressable>
 
         <View style={styles.divider} />
 
-        <Pressable style={styles.bottomItem} onPress={() => navPage("/voice")}>
+        {/* Mic icon should open camera with VOICE active */}
+        <Pressable
+          style={styles.bottomItem}
+          onPress={() => navCameraMode("voice")}
+        >
           <Icon name="microphone" size={30} color="#FCA311" />
         </Pressable>
 

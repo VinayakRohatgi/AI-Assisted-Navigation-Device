@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Alert,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -20,12 +22,13 @@ export default function HomePage() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
+  // Vision assist is ON by default on Home
   const [visionEnabled, setVisionEnabled] = useState(true);
 
-  // This controls whether the object-detection preview is mounted in the Home window.
+  // Controls whether the object-detection preview is mounted on Home
   const [visionPreviewOn, setVisionPreviewOn] = useState(false);
 
-  // Mirror the pattern from app/camera.tsx for cache-busting and a small warmup loading state.
+  // WebView warm-up / reload state (mirrors camera page behaviour)
   const [loading, setLoading] = useState(false);
   const [rev, setRev] = useState(0);
 
@@ -38,9 +41,24 @@ export default function HomePage() {
   const goToAccount = () => router.push("/account");
   const goToNavigate = () => router.push("/navigate");
   const goToSavedPlaces = () => router.push("/places");
-  const goToCameraScreen = () => router.push("/camera");
 
-  // If Vision Assist is turned off, force preview off.
+  const goToCameraVoice = () =>
+    router.push({ pathname: "/camera", params: { mode: "voice" } } as any);
+
+  const goToCameraOCR = () =>
+    router.push({ pathname: "/camera", params: { mode: "ocr" } } as any);
+
+  const goToScreenReader = () => {
+    const title = "Coming soon";
+    const msg = "Screen Reader is not implemented yet.";
+    if (Platform.OS === "web") {
+      (globalThis as any).alert?.(`${title}\n\n${msg}`);
+    } else {
+      Alert.alert(title, msg);
+    }
+  };
+
+  // If Vision Assist is turned off, force preview off
   useEffect(() => {
     if (!visionEnabled) {
       setVisionPreviewOn(false);
@@ -48,7 +66,7 @@ export default function HomePage() {
     }
   }, [visionEnabled]);
 
-  // When preview is turned on, refresh the webview and show a short loading warmup.
+  // When preview is turned on, refresh the webview and show a short loading warmup
   useEffect(() => {
     if (!visionPreviewOn) {
       setLoading(false);
@@ -73,22 +91,20 @@ export default function HomePage() {
 
   const visionHintText = useMemo(() => {
     if (!visionEnabled) return "Vision disabled";
-    return visionPreviewOn ? "Tap to turn preview off" : "Tap to turn preview on";
+    return visionPreviewOn
+      ? "Tap to turn preview off"
+      : "Tap to turn preview on";
   }, [visionEnabled, visionPreviewOn]);
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={[styles.content, { width: contentWidth }]}>
         <HomeHeader
-          greeting="Hi George!"
-          title="WalkBuddy"
+          greeting="Hi Daniel"
+          appTitle="WalkBuddy"
           onPressProfile={goToAccount}
-          showDivider={true}
-          showLocation={true}
-          locationLabel="LOCATION"
-          locationValue="1 HERE ST THERE"
-          locationEnabled={visionEnabled}
-          onToggleLocation={setVisionEnabled}
+          showDivider
+          showLocation
         />
 
         <View style={styles.mainArea}>
@@ -97,10 +113,26 @@ export default function HomePage() {
           </Pressable>
 
           <View style={styles.grid}>
-            <ActionTile icon="microphone" label="VOICE ASSIST" onPress={goToCameraScreen} />
-            <ActionTile icon="map-marker" label="PLACES" onPress={goToSavedPlaces} />
-            <ActionTile icon="volume-up" label="SCREEN READER" onPress={goToCameraScreen} />
-            <ActionTile icon="file-text" label="TEXT READER" onPress={goToCameraScreen} />
+            <ActionTile
+              icon="microphone"
+              label="VOICE ASSIST"
+              onPress={goToCameraVoice}
+            />
+            <ActionTile
+              icon="map-marker"
+              label="PLACES"
+              onPress={goToSavedPlaces}
+            />
+            <ActionTile
+              icon="volume-up"
+              label="SCREEN READER"
+              onPress={goToScreenReader}
+            />
+            <ActionTile
+              icon="file-text"
+              label="TEXT READER"
+              onPress={goToCameraOCR}
+            />
           </View>
 
           <View style={styles.visionRow}>
@@ -119,11 +151,11 @@ export default function HomePage() {
             </View>
           </View>
 
-          {/* Press this card to toggle the object detection pipeline preview on/off */}
+          {/* Tap card to toggle local vision preview */}
           <Pressable
             style={[
               styles.visionCard,
-              !visionEnabled ? styles.visionCardDisabled : null,
+              !visionEnabled && styles.visionCardDisabled,
             ]}
             onPress={toggleVisionPreview}
           >
@@ -316,19 +348,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginTop: 4,
-  },
-
-  bottomDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.divider,
-    marginTop: 12,
-    marginBottom: 10,
-  },
-
-  bottomNav: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 10,
   },
 });
