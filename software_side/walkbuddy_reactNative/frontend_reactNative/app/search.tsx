@@ -8,7 +8,6 @@ import {
   Pressable,
   TextInput,
   useWindowDimensions,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/FontAwesome";
@@ -18,18 +17,10 @@ import Footer from "./Footer";
 
 /*
   NOTE:
-  This screen is currently UI-FIRST.
-  No real search, geocoding, or navigation handoff is implemented yet.
+  This screen was originally UI-first.
+  Now it also includes basic mode handoff (Interior / Maps) once a destination is entered.
 
-  Intended future behaviour:
-  - User types or receives a destination (from Places, voice, etc.)
-  - Destination is validated / resolved (internal or external)
-  - Correct navigation engine is selected
-  - Destination is passed into internalNavigation / externalNavigation
-
-  For now:
-  - Buttons show a temporary notice
-  - Layout, spacing, and flow are being validated
+  Real destination resolution (geocoding / indoor lookup) is still handled elsewhere later.
 */
 
 const tokens = {
@@ -58,23 +49,36 @@ export default function SearchPage() {
 
   const [query, setQuery] = useState("");
 
+  // Enables/disables mode buttons
+  const hasDestination = query.trim().length > 0;
+
   // Prefill search field when coming from Places
-  // Later this will also trigger destination resolution logic
   useEffect(() => {
     if (typeof presetDestination !== "string") return;
     setQuery(presetDestination);
   }, [presetDestination]);
 
-  /*
-    TEMPORARY HANDLERS
-    These will be replaced once navigation engines are wired.
-  */
-  const handleNotReady = () => {
-    Alert.alert(
-      "Not implemented yet",
-      "This feature will be updated shortly."
-    );
-  };
+  // Trigger interior mode when a valid destination is entered
+  function onPressInterior() {
+    // Prevent navigation if no destination is provided
+    if (!hasDestination) return;
+
+    router.push({
+      pathname: "/IT", // temporary route : interior page will be finalised later
+      params: { targetedDestination: query.trim() }, // pass entered destination forward
+    });
+  }
+
+  // Trigger map-based mode when a valid destination is entered
+  function onPressMaps() {
+    // Prevent navigation if no destination is provided
+    if (!hasDestination) return;
+
+    router.push({
+      pathname: "/navigate", // temporary route : maps page will be finalised later
+      params: { targetedDestination: query.trim() }, // pass entered destination forward
+    });
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -93,7 +97,7 @@ export default function SearchPage() {
         <View style={styles.mainArea}>
           <Text style={styles.sectionTitle}>Enter Your Search</Text>
 
-          {/* Search input (UI only – no real search yet) */}
+          {/* Search input */}
           <View style={styles.searchBar}>
             <Icon name="search" size={18} color={tokens.muted} />
             <TextInput
@@ -104,35 +108,60 @@ export default function SearchPage() {
               style={styles.searchInput}
               autoCapitalize="words"
               autoCorrect={false}
+              returnKeyType="search"
             />
           </View>
 
-          {/* Result display area
-              This will later show resolved destinations / options */}
+          {/* Result display area */}
           <View style={styles.resultCard}>
             <Text
               style={[styles.resultTitle, { fontSize: resultFontSize }]}
               numberOfLines={3}
             >
-              {query.length > 0 ? query : "LARGE TEXT"}
+              {hasDestination ? query : "Enter a destination in the search bar to continue..."}
             </Text>
 
             <Text style={styles.resultSub} numberOfLines={3}>
-              {query.length > 0
-                ? "This is the address searched for"
-                : "This is the address searched for XYZ"}
+              {hasDestination
+                ? "This is the destination you entered"
+                : "The selected destination will appear here"}
             </Text>
           </View>
 
-          {/* Navigation mode buttons
-              Currently disabled logically – show notice only */}
+          {/* Navigation mode buttons */}
           <View style={styles.buttonRow}>
-            <Pressable style={styles.modeBtn} onPress={handleNotReady}>
-              <Text style={styles.modeBtnText}>INTERIOR</Text>
+            <Pressable
+              style={[styles.modeBtn, !hasDestination && styles.modeBtnDisabled]}
+              onPress={onPressInterior}
+              disabled={!hasDestination}
+              accessibilityLabel="Interior navigation"
+              accessibilityHint="Opens interior navigation for the selected destination"
+            >
+              <Text
+                style={[
+                  styles.modeBtnText,
+                  !hasDestination && styles.modeBtnTextDisabled,
+                ]}
+              >
+                INTERIOR
+              </Text>
             </Pressable>
 
-            <Pressable style={styles.modeBtn} onPress={handleNotReady}>
-              <Text style={styles.modeBtnText}>MAPS</Text>
+            <Pressable
+              style={[styles.modeBtn, !hasDestination && styles.modeBtnDisabled]}
+              onPress={onPressMaps}
+              disabled={!hasDestination}
+              accessibilityLabel="Outdoor maps navigation"
+              accessibilityHint="Opens outdoor maps navigation for the selected destination"
+            >
+              <Text
+                style={[
+                  styles.modeBtnText,
+                  !hasDestination && styles.modeBtnTextDisabled,
+                ]}
+              >
+                MAPS
+              </Text>
             </Pressable>
           </View>
 
@@ -243,10 +272,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  modeBtnDisabled: {
+    opacity: 0.45,
+  },
+
   modeBtnText: {
     color: tokens.text,
     fontSize: 14,
     fontWeight: "900",
     letterSpacing: 0.6,
+  },
+
+  modeBtnTextDisabled: {
+    opacity: 0.85,
   },
 });
