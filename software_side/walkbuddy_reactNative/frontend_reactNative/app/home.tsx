@@ -38,7 +38,7 @@ export default function HomePage() {
     return Math.min(max, Math.max(320, width - padding * 2));
   }, [width]);
 
-  const goToAccount = () => router.push("/account");
+  const goToAccount = () => router.push("/profile");
   const goToNavigate = () =>
   router.push({ pathname: "/search" } as any);
 

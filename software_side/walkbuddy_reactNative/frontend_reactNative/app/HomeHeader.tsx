@@ -2,13 +2,13 @@
 import React, { useMemo } from "react";
 import { View, Text, Pressable, StyleSheet, Switch } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
-import { useSegments } from "expo-router";
+import { useRouter, useSegments } from "expo-router";
 import { useCurrentLocation } from "./lib/locationSaver";
 
 type Props = {
-  greeting?: string;        // Home only (future profile will supply this)
+  greeting?: string;        // Home only
   appTitle?: string;        // Branding in the centre
-  onPressProfile?: () => void;
+  onPressProfile?: () => void; // Optional override
 
   showDivider?: boolean;
   showLocation?: boolean;
@@ -52,7 +52,9 @@ export default function HomeHeader({
 
   locationValue = "",
 }: Props) {
+  const router = useRouter();
   const segments = useSegments();
+
   const {
     currentLocation,
     destination,
@@ -80,7 +82,23 @@ export default function HomeHeader({
       value,
       switchValue: hasDestination ? preferDestinationView : false,
     };
-  }, [segments, greeting, currentLocation, destination, preferDestinationView, locationValue]);
+  }, [
+    segments,
+    greeting,
+    currentLocation,
+    destination,
+    preferDestinationView,
+    locationValue,
+  ]);
+
+  // Centralised profile navigation
+  const handleProfilePress = () => {
+    if (onPressProfile) {
+      onPressProfile();
+      return;
+    }
+    router.push("/profile" as any);
+  };
 
   return (
     <View style={styles.wrap}>
@@ -94,9 +112,8 @@ export default function HomeHeader({
         </Text>
 
         <Pressable
-          onPress={onPressProfile}
-          disabled={!onPressProfile}
-          accessibilityLabel="Account"
+          onPress={handleProfilePress}
+          accessibilityLabel="Profile"
           hitSlop={10}
           style={styles.profileBtn}
         >
@@ -225,4 +242,3 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 });
-  
