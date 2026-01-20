@@ -113,7 +113,8 @@ export default function PlacesPage() {
 
     router.push({
       pathname: "/search",
-      params: { presetDestination: placeItem.title },
+      params: { presetDestination: placeItem.title,
+      presetType: placeItem.kind,},
     } as any);
   };
 
@@ -171,8 +172,7 @@ export default function PlacesPage() {
             </View>
           }
         />
-
-        <Footer />
+        <Footer/>
       </View>
     </SafeAreaView>
   );

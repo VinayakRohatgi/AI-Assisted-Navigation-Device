@@ -8,10 +8,10 @@ import {
   Pressable,
   TextInput,
   useWindowDimensions,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/FontAwesome";
-
 import HomeHeader from "./HomeHeader";
 import Footer from "./Footer";
 
@@ -31,14 +31,16 @@ const tokens = {
   gold: "#FCA311",
 };
 
+type DestinationType = "I" | "E";
+
 export default function SearchPage() {
   const router = useRouter();
-
   const { width, height } = useWindowDimensions();
   const resultFontSize = Math.max(26, Math.min(36, height * 0.045));
 
-  const { presetDestination } = useLocalSearchParams<{
+  const { presetDestination, presetType } = useLocalSearchParams<{
     presetDestination?: string;
+    presetType?: DestinationType;
   }>();
 
   const contentWidth = useMemo(() => {
@@ -48,35 +50,47 @@ export default function SearchPage() {
   }, [width]);
 
   const [query, setQuery] = useState("");
-
-  // Enables/disables mode buttons
+  const [destinationType, setDestinationType] = useState<DestinationType | null>(null);
   const hasDestination = query.trim().length > 0;
 
   // Prefill search field when coming from Places
   useEffect(() => {
     if (typeof presetDestination !== "string") return;
     setQuery(presetDestination);
-  }, [presetDestination]);
+    if (presetType === "I" || presetType === "E") {
+      setDestinationType(presetType);
+    } else {
+      setDestinationType(null);
+    }
+  }, [presetDestination, presetType]);
 
   // Trigger interior mode when a valid destination is entered
   function onPressInterior() {
-    // Prevent navigation if no destination is provided
+    // Prevent navigation if no destination is entered
     if (!hasDestination) return;
+    if (destinationType === "E") {
+      Alert.alert("Error!!", "This is an External destination");
+      return;
+    }
 
     router.push({
-      pathname: "/IT", // temporary route : interior page will be finalised later
-      params: { targetedDestination: query.trim() }, // pass entered destination forward
+      pathname: "/interiorNav",
+      params: { targetedDestination: query.trim() },
     });
   }
 
-  // Trigger map-based mode when a valid destination is entered
+  // Trigger map based mode when a valid destination is entered
   function onPressMaps() {
     // Prevent navigation if no destination is provided
     if (!hasDestination) return;
+    if (destinationType === "I") {
+      Alert.alert("Error!!", "This is an Internal destination");
+      return;
+    }
 
     router.push({
-      pathname: "/navigate", // temporary route : maps page will be finalised later
-      params: { targetedDestination: query.trim() }, // pass entered destination forward
+      pathname: "/navigate",
+      params: { targetedDestination: query.trim() },
     });
   }
 
@@ -91,18 +105,21 @@ export default function SearchPage() {
         />
 
         {/* Spacer below header (visual breathing room) */}
-        <View style={{ height: 12 }} />
-        <View style={{ height: 12 }} />
-
+        <View style={{ height: 2 }}/>
+        <View style={{ height: 2 }}/>
         <View style={styles.mainArea}>
           <Text style={styles.sectionTitle}>Enter Your Search</Text>
 
           {/* Search input */}
           <View style={styles.searchBar}>
-            <Icon name="search" size={18} color={tokens.muted} />
+            <Icon name="search" size={18} color={tokens.muted}/>
             <TextInput
               value={query}
-              onChangeText={setQuery}
+              onChangeText={(text) => {
+                setQuery(text);
+                // Reset destination type when user edits the input manually
+                setDestinationType(null);
+              }}
               placeholder="Enter a destination"
               placeholderTextColor={tokens.muted}
               style={styles.searchInput}
@@ -118,9 +135,10 @@ export default function SearchPage() {
               style={[styles.resultTitle, { fontSize: resultFontSize }]}
               numberOfLines={3}
             >
-              {hasDestination ? query : "Enter a destination in the search bar to continue..."}
+              {hasDestination
+                ? query
+                : "Enter a destination in the search bar to continue..."}
             </Text>
-
             <Text style={styles.resultSub} numberOfLines={3}>
               {hasDestination
                 ? "This is the destination you entered"
@@ -131,7 +149,10 @@ export default function SearchPage() {
           {/* Navigation mode buttons */}
           <View style={styles.buttonRow}>
             <Pressable
-              style={[styles.modeBtn, !hasDestination && styles.modeBtnDisabled]}
+              style={[
+                styles.modeBtn,
+                !hasDestination && styles.modeBtnDisabled,
+              ]}
               onPress={onPressInterior}
               disabled={!hasDestination}
               accessibilityLabel="Interior navigation"
@@ -146,9 +167,11 @@ export default function SearchPage() {
                 INTERIOR
               </Text>
             </Pressable>
-
             <Pressable
-              style={[styles.modeBtn, !hasDestination && styles.modeBtnDisabled]}
+              style={[
+                styles.modeBtn,
+                !hasDestination && styles.modeBtnDisabled,
+              ]}
               onPress={onPressMaps}
               disabled={!hasDestination}
               accessibilityLabel="Outdoor maps navigation"
@@ -164,12 +187,10 @@ export default function SearchPage() {
               </Text>
             </Pressable>
           </View>
-
-          <View style={{ height: 12 }} />
-          <View style={{ height: 12 }} />
+          <View style={{ height: 1 }}/>
+          <View style={{ height: 1 }}/>
         </View>
-
-        <Footer />
+        <Footer/>
       </View>
     </SafeAreaView>
   );
@@ -189,11 +210,11 @@ const styles = StyleSheet.create({
   },
 
   mainArea: {
-    flex: 1,
     width: "100%",
-    paddingTop: 16,
+    paddingTop: 2,
     paddingHorizontal: 14,
     gap: 18,
+    flexGrow: 1,
   },
 
   sectionTitle: {
@@ -234,10 +255,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-
     flexGrow: 1,
-    flexBasis: "45%",
-    minHeight: 260,
+    minHeight: 200,
   },
 
   resultTitle: {

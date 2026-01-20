@@ -1,15 +1,15 @@
-{/* 
-  Note: this page currently contains only the basic UI layout.
-  Navigation and camera functionality will be added later. 
-*/}
+//  Note: this page currently contains only the basic UI layout.
+//  Navigation and camera functionality will be added later. 
 
 import React, { useState } from "react";
 import {SafeAreaView,StyleSheet,Text,View,Pressable,ScrollView,Switch,} from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import HomeHeader from "./HomeHeader";
 import Footer from "./Footer";
 
 export default function InteriorMapPage() {
-  const [cameraViewEnabled, setcameraViewEnabled] = useState(false);
+  const [cameraViewEnabled, setCameraViewEnabled] = useState(false);
+  const { targetedDestination } = useLocalSearchParams<{ targetedDestination?: string }>();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -19,7 +19,7 @@ export default function InteriorMapPage() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.centerColumn}>
-          <HomeHeader />
+          <HomeHeader/>
 
           <View style={styles.main}>
             <View style={styles.directionArrowContainer}>
@@ -41,7 +41,7 @@ export default function InteriorMapPage() {
                   </Text>
                   <Switch
                     value={cameraViewEnabled}
-                    onValueChange={setcameraViewEnabled}
+                    onValueChange={setCameraViewEnabled}
                     thumbColor={cameraViewEnabled ? GOLD : "#9aa3ad"}
                     trackColor={{ false: "#233044", true: "#7a5600" }}
                   />
@@ -50,11 +50,11 @@ export default function InteriorMapPage() {
 
               {/* Camera View Area */}
               {cameraViewEnabled ? (
-                <View style={styles.cameraViewBox} />
+                <View style={styles.cameraViewBox}/>
               ) : (
                 <Pressable
                   style={styles.enableCameraViewButton}
-                  onPress={() => setcameraViewEnabled(true)}
+                  onPress={() => setCameraViewEnabled(true)}
                 >
                   <Text style={styles.enableCameraViewButtonTitle}>
                     TURN CAMERA VIEW{"\n"}ON
@@ -63,7 +63,7 @@ export default function InteriorMapPage() {
               )}
             </View>
           </View>
-          <Footer />
+          <Footer/>
         </View>
       </ScrollView>
     </SafeAreaView>
