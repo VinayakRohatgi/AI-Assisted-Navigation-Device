@@ -152,7 +152,7 @@ export default function PlacesPage() {
       <View style={[styles.content, { width: contentWidth }]}>
         <HomeHeader
           appTitle="WalkBuddy"
-          onPressProfile={() => router.push("/account" as any)}
+          onPressProfile={() => router.push("/profile" as any)}
           showDivider
           showLocation
         />

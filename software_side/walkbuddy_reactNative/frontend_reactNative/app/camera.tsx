@@ -204,7 +204,7 @@ export default function CameraAssistScreen() {
           <HomeHeader
             greeting="Hi!"
             appTitle="WalkBuddy"
-            onPressProfile={() => router.push("/account")}
+            onPressProfile={() => router.push("/profile")}
             showDivider
             showLocation
           />
@@ -231,7 +231,7 @@ export default function CameraAssistScreen() {
         <HomeHeader
           greeting="Hi!"
           appTitle="WalkBuddy"
-          onPressProfile={() => router.push("/account")}
+          onPressProfile={() => router.push("/profile")}
           showDivider
           showLocation
         />
