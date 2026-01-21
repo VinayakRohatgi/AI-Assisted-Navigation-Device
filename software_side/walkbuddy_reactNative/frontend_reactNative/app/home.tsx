@@ -1,4 +1,4 @@
-// home.tsx (HomePage)
+// app/(tabs)/home.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
 import {
@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/FontAwesome";
+
 import HomeHeader from "./HomeHeader";
 import Footer from "./Footer";
 import ModelWebView from "../src/components/ModelWebView";
@@ -22,13 +23,8 @@ export default function HomePage() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  // Vision assist is ON by default on Home
   const [visionEnabled, setVisionEnabled] = useState(true);
-
-  // Controls whether the object-detection preview is mounted on Home
   const [visionPreviewOn, setVisionPreviewOn] = useState(false);
-
-  // WebView warm-up / reload state (mirrors camera page behaviour)
   const [loading, setLoading] = useState(false);
   const [rev, setRev] = useState(0);
 
@@ -39,14 +35,10 @@ export default function HomePage() {
   }, [width]);
 
   const goToAccount = () => router.push("/profile");
-  const goToNavigate = () =>
-  router.push({ pathname: "/search" } as any);
-
+  const goToNavigate = () => router.push("/search" as any);
   const goToSavedPlaces = () => router.push("/places");
-
   const goToCameraVoice = () =>
     router.push({ pathname: "/camera", params: { mode: "voice" } } as any);
-
   const goToCameraOCR = () =>
     router.push({ pathname: "/camera", params: { mode: "ocr" } } as any);
 
@@ -60,7 +52,6 @@ export default function HomePage() {
     }
   };
 
-  // If Vision Assist is turned off, force preview off
   useEffect(() => {
     if (!visionEnabled) {
       setVisionPreviewOn(false);
@@ -68,7 +59,6 @@ export default function HomePage() {
     }
   }, [visionEnabled]);
 
-  // When preview is turned on, refresh the webview and show a short loading warmup
   useEffect(() => {
     if (!visionPreviewOn) {
       setLoading(false);
@@ -108,33 +98,17 @@ export default function HomePage() {
           showDivider
           showLocation
         />
-        
+
         <View style={styles.mainArea}>
           <Pressable style={styles.searchButton} onPress={goToNavigate}>
             <Text style={styles.searchText}>SEARCH</Text>
           </Pressable>
 
           <View style={styles.grid}>
-            <ActionTile
-              icon="microphone"
-              label="VOICE ASSIST"
-              onPress={goToCameraVoice}
-            />
-            <ActionTile
-              icon="map-marker"
-              label="PLACES"
-              onPress={goToSavedPlaces}
-            />
-            <ActionTile
-              icon="volume-up"
-              label="SCREEN READER"
-              onPress={goToScreenReader}
-            />
-            <ActionTile
-              icon="file-text"
-              label="TEXT READER"
-              onPress={goToCameraOCR}
-            />
+            <ActionTile icon="microphone" label="VOICE ASSIST" onPress={goToCameraVoice} />
+            <ActionTile icon="map-marker" label="PLACES" onPress={goToSavedPlaces} />
+            <ActionTile icon="volume-up" label="SCREEN READER" onPress={goToScreenReader} />
+            <ActionTile icon="file-text" label="TEXT READER" onPress={goToCameraOCR} />
           </View>
 
           <View style={styles.visionRow}>
@@ -153,7 +127,6 @@ export default function HomePage() {
             </View>
           </View>
 
-          {/* Tap card to toggle local vision preview */}
           <Pressable
             style={[
               styles.visionCard,
@@ -195,10 +168,12 @@ function ActionTile({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.tile} onPress={onPress}>
-      <Icon name={icon} size={22} color={tokens.gold} />
-      <Text style={styles.tileText}>{label}</Text>
-    </Pressable>
+    <View style={styles.tile}>
+      <Pressable style={styles.tileInner} onPress={onPress}>
+        <Icon name={icon} size={22} color={tokens.gold} />
+        <Text style={styles.tileText}>{label}</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -208,7 +183,6 @@ const tokens = {
   text: "#e8eef6",
   muted: "#b8c6d4",
   gold: "#f2a900",
-  divider: "#f2a900",
 };
 
 const styles = StyleSheet.create({
@@ -227,7 +201,6 @@ const styles = StyleSheet.create({
   mainArea: {
     flex: 1,
     width: "100%",
-    justifyContent: "flex-start",
     paddingTop: 8,
   },
 
@@ -253,22 +226,25 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 18,
     marginBottom: 20,
   },
 
   tile: {
-    width: "48%",
-    backgroundColor: tokens.tile,
-    borderWidth: 2,
-    borderColor: tokens.gold,
-    borderRadius: 14,
-    paddingVertical: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
+    width: "50%",
+    padding: 9,
   },
+
+  tileInner: {
+  width: "100%",
+  backgroundColor: tokens.tile,
+  borderWidth: 2,
+  borderColor: tokens.gold,
+  borderRadius: 14,
+  paddingVertical: 20,   // was 26
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,                // was 10
+},
 
   tileText: {
     color: tokens.text,
