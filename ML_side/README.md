@@ -33,9 +33,26 @@ python setup_models.py
 1.  Download `Llama-3.2-1B-Instruct-Q4_K_M.gguf` from [HuggingFace](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf).
 2.  Place it in: `ML_side/models/llama-3.2-1b-instruct-q4_k_m.gguf`.
 
+
+## Slow Lane Setup (Two-Brain API)
+
+To run the full Two-Brain API (`/two_brain`, `/reason`), you need the Llama 3.2 1B Instruct GGUF model.
+Since this file is large, it is not included in the git repository.
+
+### Option 1: Automatic Download (Recommended)
+Run the setup script:
+```bash
+python setup_models.py
+```
+
+### Option 2: Manual Download
+1.  Download `Llama-3.2-1B-Instruct-Q4_K_M.gguf` from [HuggingFace](https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf).
+2.  Place it in: `ML_side/models/llama-3.2-1b-instruct-q4_k_m.gguf`.
+
 ## Dataset
 
 ### Object Classes
+
 
 The model is trained to detect 7 different object classes:
 - `book` - Individual books
