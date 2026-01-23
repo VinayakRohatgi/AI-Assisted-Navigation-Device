@@ -6,6 +6,7 @@ import * as Speech from "expo-speech";
 import React, {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -18,25 +19,61 @@ import {
   Text,
   View,
   ActivityIndicator,
+  ScrollView,
+  useWindowDimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 import { askTwoBrain, detectObject } from "../src/api/client";
+import HomeHeader from "./HomeHeader";
+import Footer from "./Footer";
 
-const GOLD = "#f9b233";
-const { height: SCREEN_H } = Dimensions.get("window");
+const tokens = {
+  bg: "#0D1B2A",
+  card: "#111",
+  gold: "#FCA311",
+  text: "#E0E1DD",
+};
+
+const GOLD = tokens.gold; // mapping for legacy code
 
 type Mode = "idle" | "vision" | "voice" | "ocr";
 
 export default function CameraAssistScreen() {
+  const router = useRouter();
+  const { width, height } = useWindowDimensions();
+
+  // Layout calculations
+  const contentWidth = useMemo(() => {
+    const padding = 24;
+    const max = 720;
+    return Math.min(max, Math.max(320, width - padding * 2));
+  }, [width]);
+
+  const previewHeight = useMemo(() => {
+    const h = Math.round(height * 0.52);
+    return Math.max(260, Math.min(520, h));
+  }, [height]);
+
+  // Mode state
   const [mode, setMode] = useState<Mode>("vision");
+  const { mode: modeParam } = useLocalSearchParams<{ mode?: Mode }>();
+
+  // Deep link param handling
+  useEffect(() => {
+    if (modeParam === "vision" || modeParam === "voice" || modeParam === "ocr") {
+      setMode(modeParam);
+    }
+  }, [modeParam]);
+
+  // Camera permissions
   const [perm, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
-  // Thinking state
+  // Logic State
   const [processing, setProcessing] = useState(false);
   const [lastSpoken, setLastSpoken] = useState<string>("");
-
-  // Voice Assist State
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const recognitionRef = useRef<any>(null);
@@ -48,13 +85,10 @@ export default function CameraAssistScreen() {
   }, []);
 
   // --- API Functions ---
-
   const processFrame = async (blob: Blob) => {
     try {
       if (mode === "vision") {
         const res = await detectObject(blob);
-        // Basic logic: Find highest confidence object close by
-        // Filter repeats
         const best = res.events
           .filter(e => e.confidence > 0.5)
           .sort((a, b) => b.confidence - a.confidence)[0];
@@ -101,10 +135,8 @@ export default function CameraAssistScreen() {
       interval = setInterval(async () => {
         if (cameraRef.current) {
           try {
-            // Take picture
             const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
             if (photo?.uri) {
-              // Convert to Blob
               const response = await fetch(photo.uri);
               const blob = await response.blob();
               await processFrame(blob);
@@ -113,7 +145,7 @@ export default function CameraAssistScreen() {
             console.log("Vision loop err", err);
           }
         }
-      }, 2000); // Every 2 seconds
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [mode, processing, lastSpoken]);
@@ -123,7 +155,6 @@ export default function CameraAssistScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTranscript("");
 
-    // Web Shim
     if (Platform.OS === "web") {
       const W = globalThis as any;
       const SR = W.SpeechRecognition || W.webkitSpeechRecognition;
@@ -138,17 +169,12 @@ export default function CameraAssistScreen() {
       };
       rec.onend = () => {
         setIsListening(false);
-        // Auto-send on end
         if (transcript) handleSendQuery(transcript);
       };
       rec.start();
       setIsListening(true);
     } else {
-      // Native would use expo-speech-recognition or similar libs not installed.
-      // Retaining original "alert" behavior or assuming dev client.
-      // For MVP, we simulated with "Stop" button trigger.
-      Alert.alert("Native STT", "Not fully implemented in this demo code. Use Web or tap 'Scan Text' for simulation.");
-      // Simulating a query for testing
+      Alert.alert("Native STT", "Tap 'Scan Text' just to simulate a query for this demo.");
       setTranscript("What is ahead?");
       setIsListening(true);
       setTimeout(() => {
@@ -176,49 +202,98 @@ export default function CameraAssistScreen() {
     if (transcript) handleSendQuery(transcript);
   };
 
-  // --- Permissions ---
-  if (!perm || !perm.granted) {
+  // --- Render ---
+
+  if (!perm) {
+    return <View style={{ flex: 1, backgroundColor: tokens.bg }} />;
+  }
+
+  if (!perm.granted) {
     return (
-      <View style={styles.centerDark}>
-        <Text style={{ color: "white" }}>Camera Permission Required</Text>
-        <Pressable onPress={requestPermission} style={styles.primaryBtn}><Text>Grant</Text></Pressable>
-      </View>
+      <SafeAreaView style={styles.screen} edges={["top"]}>
+        <View style={[styles.content, { width: contentWidth }]}>
+          <HomeHeader
+            greeting="Hi!"
+            appTitle="WalkBuddy"
+            onPressProfile={() => router.push("/profile")}
+            showDivider
+            showLocation
+          />
+          <View style={styles.centerCard}>
+            <Text style={styles.centerText}>Camera access is required.</Text>
+            <Pressable style={styles.primaryBtn} onPress={requestPermission}>
+              <Text style={styles.primaryBtnText}>Grant Permission</Text>
+            </Pressable>
+          </View>
+          <Footer />
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {mode === "vision" ? "VISION (Two-Brain)" : "VOICE ASSIST"}
-        </Text>
-        {processing && <ActivityIndicator color={GOLD} />}
-      </View>
+    <SafeAreaView style={styles.screen} edges={["top"]}>
+      <View style={[styles.content, { width: contentWidth }]}>
+        <HomeHeader
+          greeting="Hi!"
+          appTitle="WalkBuddy"
+          onPressProfile={() => router.push("/profile")}
+          showDivider
+          showLocation
+        />
 
-      <View style={styles.previewBox}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
-        {/* Overlay for feedback */}
-        <View style={styles.overlay}>
-          <Text style={styles.overlayText}>{processing ? "Thinking..." : lastSpoken}</Text>
-        </View>
-      </View>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.modeTitleRow}>
+            <Text style={styles.modeTitle}>
+              {mode === "vision" ? "VISION (Two-Brain)" : "VOICE ASSIST"}
+            </Text>
+            {processing && <ActivityIndicator size="small" color={GOLD} />}
+          </View>
 
-      <View style={styles.modeBar}>
-        <ModeBtn label="Vision" active={mode === "vision"} onPress={() => { setMode("vision"); Haptics.selectionAsync(); }} />
-        <ModeBtn label="Voice" active={mode === "voice"} onPress={() => { setMode("voice"); Haptics.selectionAsync(); }} />
-      </View>
+          <View style={[styles.previewBox, { height: previewHeight }]}>
+            <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+            <View style={styles.overlay}>
+              <Text style={styles.overlayText}>{processing ? "Thinking..." : lastSpoken}</Text>
+            </View>
+          </View>
 
-      {mode === "voice" && (
-        <View style={styles.voiceRow}>
-          <Pressable onPress={isListening ? stopListening : startListening} style={[styles.micBtn, isListening && styles.micBtnActive]}>
-            <MaterialIcons name={isListening ? "mic" : "mic-none"} size={28} color={isListening ? "#1B263B" : GOLD} />
-          </Pressable>
-          <Text style={{ color: "white", flex: 1, marginLeft: 10 }}>
-            {transcript || (processing ? "Processing..." : "Tap mic to ask")}
-          </Text>
-        </View>
-      )}
-    </View>
+          <View style={styles.modeBar}>
+            <ModeBtn label="Vision" active={mode === "vision"} onPress={() => { setMode("vision"); Haptics.selectionAsync(); }} />
+            <ModeBtn label="Voice Assist" active={mode === "voice"} onPress={() => { setMode("voice"); Haptics.selectionAsync(); }} />
+          </View>
+
+          {mode === "voice" && (
+            <View style={styles.voiceRow}>
+              <Pressable
+                onPress={isListening ? stopListening : startListening}
+                style={[styles.micBtn, isListening && styles.micBtnActive]}
+              >
+                <MaterialIcons
+                  name={isListening ? "mic" : "mic-none"}
+                  size={28}
+                  color={isListening ? tokens.bg : tokens.gold}
+                />
+              </Pressable>
+
+              <View style={styles.voiceTextWrap}>
+                <Text style={styles.voiceHint}>
+                  {isListening ? "Listening…" : "Tap the mic and speak"}
+                </Text>
+                {!!transcript && (
+                  <Text style={styles.voiceTranscript}>{transcript}</Text>
+                )}
+              </View>
+            </View>
+          )}
+        </ScrollView>
+
+        <Footer />
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -231,24 +306,42 @@ function ModeBtn({ label, active, onPress }: any) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: "#1B263B" },
-  header: {
-    flexDirection: "row",
+  screen: {
+    flex: 1,
+    backgroundColor: tokens.bg,
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 40,
-    paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: GOLD,
   },
-  headerTitle: { color: GOLD, fontSize: 20, fontWeight: "800" },
+  content: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 16,
+  },
+  modeTitleRow: {
+    paddingHorizontal: 14,
+    paddingTop: 2,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  modeTitle: {
+    color: tokens.gold,
+    fontSize: 18,
+    fontWeight: "900",
+  },
   previewBox: {
-    height: SCREEN_H * 0.55,
-    margin: 12,
-    borderRadius: 10,
+    width: "100%",
+    borderRadius: 14,
     overflow: "hidden",
     backgroundColor: "#000",
+    borderWidth: 2,
+    borderColor: tokens.gold,
     position: 'relative'
   },
   overlay: {
@@ -263,31 +356,61 @@ const styles = StyleSheet.create({
   modeBar: {
     flexDirection: "row",
     gap: 10,
-    justifyContent: "space-around",
-    paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   modeBtn: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: GOLD,
-    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: tokens.gold,
+    borderRadius: 12,
     paddingVertical: 10,
     alignItems: "center",
+    backgroundColor: tokens.card,
   },
-  modeBtnActive: { backgroundColor: GOLD },
-  modeBtnText: { color: GOLD, fontWeight: "700" },
-  modeBtnTextActive: { color: "#1B263B" },
+  modeBtnActive: { backgroundColor: tokens.gold },
+  modeBtnText: { color: tokens.gold, fontWeight: "800" },
+  modeBtnTextActive: { color: tokens.bg },
   voiceRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   micBtn: {
-    width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: GOLD,
-    alignItems: 'center', justifyContent: 'center'
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: tokens.gold,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: tokens.card,
   },
-  micBtnActive: { backgroundColor: GOLD },
-  centerDark: { flex: 1, backgroundColor: "#1B263B", alignItems: 'center', justifyContent: 'center' },
-  primaryBtn: { marginTop: 20, backgroundColor: GOLD, padding: 10, borderRadius: 5 }
+  micBtnActive: { backgroundColor: tokens.gold },
+  voiceTextWrap: { flex: 1 },
+  voiceHint: { color: tokens.gold, fontWeight: "800" },
+  voiceTranscript: { color: tokens.text, marginTop: 6 },
+  centerCard: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: tokens.gold,
+    borderRadius: 14,
+    backgroundColor: tokens.card,
+    padding: 16,
+    marginTop: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  centerText: { color: tokens.text, fontWeight: "700", textAlign: "center" },
+  primaryBtn: {
+    backgroundColor: tokens.gold,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+  },
+  primaryBtnText: { color: tokens.bg, fontWeight: "900" },
 });
+
